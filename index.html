@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>実験A2 当日やること</title>
+<style>
+:root { color-scheme: light dark; }
+body { font-family: "Hiragino Sans", "Noto Sans JP", sans-serif; line-height: 1.7; max-width: 760px; margin: 0 auto; padding: 16px 16px 60px; font-size: 16px; }
+h1 { font-size: 1.35em; margin: 0.2em 0 0.1em; }
+h2 { font-size: 1.15em; border-bottom: 1px solid currentColor; padding-bottom: 2px; margin-top: 1.8em; }
+h3 { font-size: 1.02em; margin: 1.3em 0 0.3em; }
+.小 { font-size: 0.85em; opacity: 0.75; }
+ul { padding-left: 1.2em; }
+li { margin: 0.25em 0; }
+label { display: block; padding: 6px 0 6px 2px; border-bottom: 1px solid rgba(128,128,128,0.25); }
+label input { transform: scale(1.3); margin-right: 10px; vertical-align: -1px; }
+label.済 { opacity: 0.45; text-decoration: line-through; }
+pre { background: rgba(128,128,128,0.12); padding: 10px; overflow-x: auto; font-size: 0.88em; line-height: 1.5; border-radius: 4px; }
+code { font-family: Menlo, Consolas, monospace; font-size: 0.92em; }
+table { border-collapse: collapse; font-size: 0.9em; width: 100%; }
+th, td { border: 1px solid rgba(128,128,128,0.5); padding: 4px 6px; text-align: left; vertical-align: top; }
+.宿題 { font-size: 0.8em; border: 1px solid currentColor; border-radius: 3px; padding: 0 4px; margin-left: 4px; white-space: nowrap; }
+details { margin: 0.5em 0; }
+summary { cursor: pointer; font-weight: bold; }
+</style>
+</head>
+<body>
+<h1>実験A2 画像処理 当日やること</h1>
+<p class="小">最終更新 <span id="updated">10/22 12:11</span>。元はA2の実験テキストと、先生のサイトの2nd_templateと実験A2レポートのスライド。サイトの資料は2023年度版なので、今年の配布と違うところがあれば今年の方に従う。チェックはこの端末に残る。</p>
+
+<h2>0. 始める前</h2>
+<label><input type="checkbox">2nd_template を gazo フォルダに入れる。場所は C:\cygwin64\home\gazo</label>
+<label><input type="checkbox">A1で作った trim.raw を 2nd_template にコピーする。原画像はこれを使う。大きさは128×128</label>
+<label><input type="checkbox">ファイルの文字コードは Shift-JIS。秀丸で開けばそのまま読める</label>
+<p class="小">テンプレの各ファイルは、処理の名前を書いた斜線のコメントと、ここまでと書いた斜線のコメントの間が空いている。ここに自分で書く。読み込みと書き出しは書いてある。</p>
+
+<h2>1. 雑音を作る、のせる</h2>
+
+<h3>1_rand.c 一様乱数のヒストグラム</h3>
+<label><input type="checkbox">0〜1の乱数を10000個作り、0.01刻みで g[0]〜g[99] に数える。出力は rand.csv</label>
+<pre>r = rand() / (RAND_MAX + 1.0);   /* 0以上1未満 */
+g[(int)(r * 100)]++;</pre>
+<p class="小">RAND_MAX で割ると r がちょうど1になることがあり、g[100] は配列の外になる。だから RAND_MAX + 1.0 で割る。どの区間もほぼ100個になればよい。</p>
+
+<h3>2_rand_gauss.c ガウス乱数のヒストグラム</h3>
+<label><input type="checkbox">平均100、標準偏差25のガウス乱数を10000個作り、整数にして g[0]〜g[199] に数える。出力は rand_g.csv</label>
+<pre>/* やり方1 一様乱数12個の和から6を引く */
+G = 0; for (k = 0; k &lt; 12; k++) G += rand() / (double)RAND_MAX;
+G -= 6;
+/* やり方2 Box-Muller。log(0)を避けるため R1 は0にしない */
+R1 = (rand() + 1.0) / (RAND_MAX + 1.0);
+R2 = rand() / (double)RAND_MAX;
+G = sqrt(-2 * log(R1)) * cos(2 * M_PI * R2);
+
+v = (int)(100 + 25 * G);
+if (0 &lt;= v &amp;&amp; v &lt; 200) g[v]++;</pre>
+<p class="小">どちらか1つでよい。平均と標準偏差を変えて形の変化を見る、のがテキストの課題。コンパイルで log や sqrt が見つからないと言われたら <code>gcc 2_rand_gauss.c -lm</code>。</p>
+
+<h3>3_rand_huka.c 一様雑音をのせる</h3>
+<label><input type="checkbox">発生頻度40%、平均0、最大値30。出力は rand_huka.raw と rand_huka.csv</label>
+<label><input type="checkbox">もう1種類、発生頻度か最大値を変えたものも作る <span class="宿題">宿題</span></label>
+
+<h3>4_rand_huka_gauss.c ガウス雑音をのせる</h3>
+<label><input type="checkbox">発生頻度40%、平均0、標準偏差30。出力は gauss_noise.raw と gauss_noise_hist.csv</label>
+<label><input type="checkbox">もう1種類 <span class="宿題">宿題</span></label>
+
+<h3>5_rand_huka_wb.c ごま塩雑音をのせる</h3>
+<label><input type="checkbox">発生頻度10%。選んだ画素を 255 か 0 にする。どちらにするかも乱数で決める。出力は wb_noise.raw と wb_noise_hist.csv</label>
+<label><input type="checkbox">もう1種類 <span class="宿題">宿題</span></label>
+
+<h3>3〜5で共通の注意</h3>
+<ul>
+<li><b>最初に g に f を丸ごと写す。</b>テンプレの g は空のまま。写さないと、雑音が当たらなかった画素が真っ黒になる</li>
+<li>のせる回数は 128×128×割合。40%なら6553回、10%なら1638回</li>
+<li>画素の場所は i、j をそれぞれ0〜127の乱数で選ぶ。<code>(int)(rand() / (RAND_MAX + 1.0) * 128)</code></li>
+<li>一様雑音の量は <code>2 * a * b</code>。a = rand()/RAND_MAX − 0.5、b が最大値</li>
+<li>足した値は int の temp で受け、0未満は0、255より上は255にしてから g に入れる</li>
+<li>ヒストグラムは、全部のせ終わった g を m[g[i][j]]++ で数える</li>
+<li><b>出力の名前は毎回同じで上書きされる。</b>もう1種類を作るときは、走らせたらすぐ名前を変えて取っておく。2章以降のフィルタは rand_huka.raw などを読むので、最後は40%の版に戻しておく</li>
+</ul>
+<p class="小">考察のネタ：同じ画素が2回選ばれることがあるので、6553回のせても雑音が当たる画素は40%より少なく、だいたい33%になる。</p>
+
+<h2>2. 雑音を消す</h2>
+
+<h3>6-1_l_filter.c 平均フィルタ 3×3 重みなし</h3>
+<label><input type="checkbox">3種類の雑音画像それぞれに、周り9画素の平均を入れる。出力は remove_noise.raw、remove_gauss_noise.raw、remove_wb_noise.raw</label>
+<pre>for (i = 1; i &lt; SIZE - 1; i++)
+  for (j = 1; j &lt; SIZE - 1; j++) {
+    合計 = 0;
+    for (k = -1; k &lt;= 1; k++)
+      for (l = -1; l &lt;= 1; l++)
+        合計 += f[i + k][j + l];
+    g[i][j] = 合計 / 9;
+  }</pre>
+<label><input type="checkbox">6-2 重みあり 3×3。重みは 1,2,1 / 2,4,2 / 1,2,1 を16で割る <span class="宿題">宿題</span></label>
+<label><input type="checkbox">6-3 重みなし 5×5。25画素の平均。i、j は2から SIZE−3 まで <span class="宿題">宿題</span></label>
+
+<h3>7-1_m_filter.c メディアンフィルタ 3×3</h3>
+<label><input type="checkbox">9画素を temp[9] に入れて並べ替え、真ん中の temp[4] を g に入れる。出力は remove_m_noise.raw など3つ</label>
+<label><input type="checkbox">7-2 5×5。temp[25] を並べて temp[12] <span class="宿題">宿題</span></label>
+<p class="小">並べ替えはバブルソートで足りる。A2のための宿題の h_sort.c がそれ。端の1列は計算しないので0のまま黒い枠になる。5×5なら2列。考察で触れられる。</p>
+
+<h2>3. 輪郭を取り出す</h2>
+<label><input type="checkbox">8_differentiation.c 基本の微分。原画像と雑音3種の計4枚</label>
+<label><input type="checkbox">9_prewitt.c Prewitt。同じく4枚</label>
+<pre>/* 基本の微分。4方向の差を取り、絶対値の一番大きいものを使う */
+a = f[i+1][j] - f[i-1][j];       /* 縦方向 */
+b = f[i][j+1] - f[i][j-1];       /* 横方向 */
+c = f[i+1][j+1] - f[i-1][j-1];   /* 斜め */
+d = f[i+1][j-1] - f[i-1][j+1];   /* 斜め */
+g[i][j] = max(max(a, b), max(c, d));</pre>
+<p class="小">テンプレの max は絶対値で比べて絶対値を返す。Prewitt は同じ形で、隣の3画素ずつを使い1/3を掛ける。重みはテキスト5ページの4つの表のとおり。</p>
+
+<h2>4. 輪郭を強める</h2>
+<label><input type="checkbox">10_lapurasian.c ラプラシアン。α を 0.5、1.0、1.5 の3通り。出力は lapurasian_kyotyo.raw</label>
+<label><input type="checkbox">11_unsharp.c アンシャープマスク。β を変える <span class="宿題">宿題</span></label>
+<pre>/* ラプラシアン */
+l[i][j] = f[i-1][j] + f[i+1][j] + f[i][j-1] + f[i][j+1] - 4 * f[i][j];
+g[i][j] = f[i][j] - α * l[i][j];
+/* アンシャープマスク。l は3×3平均でぼかした画像 */
+g[i][j] = f[i][j] + β * (f[i][j] - l[i][j]);</pre>
+<ul>
+<li><b>g は0〜255に収めてから g1 に写す。</b>テンプレは g1[i][j] = g[i][j] とそのまま写すだけなので、範囲の外の値があると白黒の点が出る</li>
+<li>α を変えるたびに出力名が同じで上書きされる。走らせたらすぐ名前を変える</li>
+<li>雑音画像に使うのは余力がある人だけ</li>
+</ul>
+
+<h2>5. レポート用に持ち帰るもの</h2>
+<label><input type="checkbox">原画像 trim.raw と、そのヒストグラム</label>
+<label><input type="checkbox">rand.csv、rand_g.csv と、そのグラフ</label>
+<label><input type="checkbox">雑音画像3種と、それぞれのヒストグラムの csv</label>
+<label><input type="checkbox">雑音除去の画像、輪郭抽出の画像、輪郭強調の画像</label>
+<label><input type="checkbox">使ったパラメータのメモ。発生頻度、平均、最大値、標準偏差、α、β</label>
+<label><input type="checkbox">自分で書いた部分のソースコード</label>
+<label><input type="checkbox">gazo フォルダごと USB かクラウドに持ち帰る</label>
+<p class="小">raw は ImageJ の Import Raw で 8-bit、128×128 にして開く。グラフの作り方はA1と同じで、256階調は横軸の間隔50、縦軸 頻度、横軸 濃度値、Excelブックで保存。</p>
+
+<h2>6. レポートに最低限書くこと</h2>
+<p class="小">実験A2レポートのスライドより。どれも、なぜそうなるかを手法の違いに注目して書く。</p>
+<ul>
+<li>雑音をのせた画像の見た目の比較</li>
+<li>雑音をのせた画像のヒストグラムの比較</li>
+<li>線形フィルタの比較。重みあり、重みなし、5×5</li>
+<li>非線形フィルタの比較。3×3と5×5</li>
+<li>線形フィルタと非線形フィルタの比較</li>
+<li>基本の微分と Prewitt の比較</li>
+<li>ラプラシアンとアンシャープマスクのパラメータの比較</li>
+<li>ラプラシアンとアンシャープマスクで輪郭が強まる仕組みの説明と比較</li>
+</ul>
+
+<details>
+<summary>載せる画像の一覧。スライドの3、4ページ</summary>
+<table>
+<tr><th>項目</th><th>中身</th></tr>
+<tr><td>原画像</td><td>比較のための原画像、原画像のヒストグラム</td></tr>
+<tr><td>一様雑音</td><td>一様乱数のヒストグラム。付加画像とそのヒストグラム。40%、平均0、最大値30と、もう1種類<span class="宿題">宿題</span></td></tr>
+<tr><td>ガウス雑音</td><td>ガウス乱数のヒストグラム、平均100、標準偏差25。付加画像とそのヒストグラム。40%、平均0、標準偏差30と、もう1種類<span class="宿題">宿題</span></td></tr>
+<tr><td>ごま塩雑音</td><td>付加画像とそのヒストグラム。10%と、もう1種類<span class="宿題">宿題</span></td></tr>
+<tr><td>線形フィルタ</td><td>雑音3種に3×3重みなし。3×3重みありと5×5重みなし<span class="宿題">宿題</span></td></tr>
+<tr><td>非線形フィルタ</td><td>雑音3種に3×3メディアン。5×5<span class="宿題">宿題</span></td></tr>
+<tr><td>輪郭抽出</td><td>原画像と雑音3種に、基本の微分と Prewitt</td></tr>
+<tr><td>輪郭強調</td><td>原画像にラプラシアン、α 0.5、1.0、1.5。アンシャープマスク<span class="宿題">宿題</span>。雑音画像は余力のある人だけ</td></tr>
+</table>
+<p class="小">各画像のパラメータは必ずレポートに書く。フィルタは最低でも上の40%などの雑音画像に対してかける。</p>
+</details>
+
+<h2>7. このあと</h2>
+<ul>
+<li>レポートは実験日から1週間以内に1回、担当TAにPDFでメール。A1と同じく赤入れが返ってきたら直して再提出</li>
+<li>TAの合格が出たら Hoppii に PDF</li>
+<li>試問は尾川先生、Zoom、実験日から2週間以内。日程はTAの合格のあとに個別に決まる</li>
+<li>A1の試問も10/29までなので忘れない</li>
+</ul>
+
+<script>
+document.querySelectorAll('label input[type=checkbox]').forEach(function (b, n) {
+  var key = 'a2-check-' + n;
+  b.checked = localStorage.getItem(key) === '1';
+  b.parentNode.classList.toggle('済', b.checked);
+  b.addEventListener('change', function () {
+    localStorage.setItem(key, b.checked ? '1' : '0');
+    b.parentNode.classList.toggle('済', b.checked);
+  });
+});
+</script>
+</body>
+</html>
